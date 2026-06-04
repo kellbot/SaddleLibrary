@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Philadelphia Saddle Library</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>Philadelphia Saddle Library</h1>
+      <p>Borrow a saddle!</p>
+    </header>
+
+    <main class="container">
+      <section class="toolbar">
+        <input id="searchInput" type="search" placeholder="Search by name or manufacturer" />
+        <button id="refreshButton" type="button">Refresh</button>
+      </section>
+
+      <section id="status" class="status" aria-live="polite"></section>
+      <section id="saddleList" class="grid" aria-live="polite"></section>
+    </main>
+
+    <template id="cardTemplate">
+      <article class="card">
+        <img class="card-photo" alt="" loading="lazy" />
+        <div class="card-body">
+          <h2 class="card-title"></h2>
+          <p class="card-meta"></p>
+          <p class="card-notes"></p>
+          <button class="checkout-button" type="button">Borrow</button>
+        </div>
+      </article>
+    </template>
+
+    <dialog id="checkoutDialog" class="checkout-dialog">
+      <form id="checkoutForm" method="dialog" class="checkout-form">
+        <h2>Request a Saddle Checkout</h2>
+        <p id="checkoutSaddleSummary" class="checkout-summary"></p>
+
+        <label>
+          Your Name
+          <input name="borrowerName" required />
+        </label>
+
+        <label>
+          Email
+          <input name="borrowerEmail" type="email" required />
+        </label>
+
+        <label>
+          Phone
+          <input name="borrowerPhone" required/>
+        </label>
+
+        <label>
+          Notes (optional)
+          <textarea name="borrowerNotes" rows="3"></textarea>
+        </label>
+
+        <div class="checkout-actions">
+          <button type="button" id="cancelCheckoutButton">Cancel</button>
+          <button type="submit" id="submitCheckoutButton">Submit Request</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="config.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
