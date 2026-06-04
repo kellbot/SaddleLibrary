@@ -1,0 +1,107 @@
+<html>
+    <head>
+        <script src="qrcode.min.js"></script>
+        <title>Label Generator</title>
+        <style>
+                #print-layout {
+            width: 8.5in;
+            height: 11in;
+            margin: 0;
+            border: 1px solid black;
+            box-sizing: border-box;
+
+        }
+
+        .labelSticker {
+
+            position: absolute;
+            overflow: hidden;
+        }
+        .textDiv {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .qrDiv {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 0.15in;
+        }
+        @media print {
+            @page {
+                margin: 0;
+            }
+
+            body {
+                visibility: hidden;
+            }
+
+            #print-layout {
+                visibility: visible;
+                border: none;
+            }
+        }
+        </style>
+        
+    </head>
+    <body>
+        <!-- Grid of rounded squares -->
+         
+        <div id="print-layout">
+
+        </div>
+        <script>
+
+            let options = {
+                name: "OL2681",
+                size: 1.5,
+                xSpacing: 0.35,
+                ySpacing: 0.18,
+                rows: 6,
+                cols: 4,
+                leftMargin: 0.75,
+                topMargin: 0.5,
+            }
+
+            const printLayout = document.querySelector("#print-layout");
+
+            let i = 0;
+
+            for (let r = 0; r < options.rows; r++) {
+                for (let c = 0; c < options.cols; c++) {
+                const label = document.createElement("div");
+                const labelText = document.createElement("div");
+                labelText.classList.add("textDiv");
+
+                labelText.textContent = i;
+
+                const qrDiv = document.createElement("div");
+                qrDiv.classList.add("qrDiv");
+
+                new QRCode(qrDiv, {
+                    text: `https://kellbot.github.io/SaddleLibrary/#${i}`,
+                    width: 100,
+                    height: 100,
+                });
+
+
+                label.appendChild(qrDiv);
+                                label.appendChild(labelText);
+                label.classList.add("labelSticker");
+                label.style.width = `${options.size}in`;
+                label.style.height = `${options.size}in`;
+
+
+                label.style.top = `${options.topMargin + r * (options.size + options.ySpacing)}in`;
+                label.style.left = `${options.leftMargin + c * (options.size + options.xSpacing)}in`;
+
+                printLayout.appendChild(label);
+                i++;
+                }
+            }
+        </script>
+    </body>
+</html>
