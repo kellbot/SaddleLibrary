@@ -320,7 +320,7 @@ function renderCards(records) {
     }
     meta.textContent = parts.join(" • ");
 
-    notes.textContent = saddle.notes || "No notes";
+    notes.textContent = saddle.notes || "";
 
     checkoutButton.addEventListener("click", () => {
       openCheckoutDialog(saddle.id);
