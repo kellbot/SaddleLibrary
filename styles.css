@@ -128,7 +128,8 @@ body {
   position: absolute;
   top: 0.45rem;
   right: 0.45rem;
-  color: gold;
+  background: rgba(255, 255, 255, 1);
+  color: rgb(196, 166, 0);
   font-size: 1rem;
   line-height: 1;
   padding: 0.25rem 0.3rem;
