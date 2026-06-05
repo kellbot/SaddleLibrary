@@ -16,6 +16,45 @@ function jsonResponse(payload, status = 200) {
   });
 }
 
+const rateLimitStore = new Map();
+
+function getClientIp(request) {
+  const direct = request.headers.get("cf-connecting-ip");
+  if (direct) {
+    return direct;
+  }
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+
+  return "unknown";
+}
+
+function enforceRateLimit(request, env) {
+  const maxAttempts = Number(env.RATE_LIMIT_MAX || "3");
+  const windowMs = Number(env.RATE_LIMIT_WINDOW_MS || String(10 * 60 * 1000));
+  const now = Date.now();
+  const ip = getClientIp(request);
+  const key = `checkout:${ip}`;
+  const current = rateLimitStore.get(key);
+
+  if (!current || now > current.resetAt) {
+    rateLimitStore.set(key, {
+      count: 1,
+      resetAt: now + windowMs,
+    });
+    return;
+  }
+
+  if (current.count >= maxAttempts) {
+    throw new Error("Too many requests, please try again later");
+  }
+
+  current.count += 1;
+}
+
 async function fetchAllRecords(env) {
   const token = env.AIRTABLE_TOKEN;
   const baseId = env.AIRTABLE_BASE_ID;
@@ -96,7 +135,56 @@ function parseCheckoutPayload(payload) {
     borrowerEmail: String(payload?.borrowerEmail || "").trim(),
     borrowerPhone: String(payload?.borrowerPhone || "").trim(),
     borrowerNotes: String(payload?.borrowerNotes || "").trim(),
+    website: String(payload?.website || "").trim(),
+    startedAtMs: Number(payload?.startedAtMs || 0),
+    turnstileToken: String(payload?.turnstileToken || "").trim(),
   };
+}
+
+async function verifyTurnstile(env, token, request) {
+  const secret = env.TURNSTILE_SECRET;
+  if (!secret) {
+    return;
+  }
+
+  if (!token) {
+    throw new Error("Missing anti-spam token");
+  }
+
+  const body = new URLSearchParams();
+  body.set("secret", secret);
+  body.set("response", token);
+  body.set("remoteip", getClientIp(request));
+
+  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: body.toString(),
+  });
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok || !result.success) {
+    throw new Error("Anti-spam check failed");
+  }
+}
+
+async function enforceAntiSpam(env, request, payload) {
+  if (payload.website) {
+    throw new Error("Request rejected");
+  }
+
+  const minFillMs = Number(env.MIN_FORM_FILL_MS || "2500");
+  const startedAt = Number(payload.startedAtMs || 0);
+
+  if (!startedAt || Date.now() - startedAt < minFillMs) {
+    throw new Error("Form submitted too quickly");
+  }
+
+  enforceRateLimit(request, env);
+  await verifyTurnstile(env, payload.turnstileToken, request);
 }
 
 function defaultDueDateIso(daysInFuture = 21) {
@@ -205,6 +293,8 @@ async function createCheckoutRequest(env, request) {
 
   const rawPayload = await request.json().catch(() => ({}));
   const payload = parseCheckoutPayload(rawPayload);
+
+  await enforceAntiSpam(env, request, payload);
 
   if (!payload.saddleId || !payload.borrowerName || !payload.borrowerEmail) {
     throw new Error("saddleId, borrowerName, and borrowerEmail are required");

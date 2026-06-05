@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Philadelphia Saddle Library</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   </head>
   <body>
     <nav class="top-nav" aria-label="Main navigation">
@@ -64,6 +65,17 @@
           Notes (optional)
           <textarea name="borrowerNotes" rows="3"></textarea>
         </label>
+
+        <div class="hp-field" aria-hidden="true">
+          <label>
+            Leave this field empty
+            <input name="website" tabindex="-1" autocomplete="off" />
+          </label>
+        </div>
+
+        <input type="hidden" name="startedAtMs" id="startedAtMs" />
+
+        <div id="turnstileContainer"></div>
 
         <div class="checkout-actions">
           <button type="button" id="cancelCheckoutButton">Cancel</button>

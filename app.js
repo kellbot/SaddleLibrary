@@ -14,6 +14,10 @@ const checkoutDialog = document.querySelector("#checkoutDialog");
 const checkoutForm = document.querySelector("#checkoutForm");
 const cancelCheckoutButton = document.querySelector("#cancelCheckoutButton");
 const checkoutSaddleSummary = document.querySelector("#checkoutSaddleSummary");
+const startedAtInput = document.querySelector("#startedAtMs");
+const turnstileContainer = document.querySelector("#turnstileContainer");
+
+let turnstileWidgetId = null;
 
 const sampleData = [
   {
@@ -194,6 +198,19 @@ function openCheckoutDialog(saddleId) {
 
   checkoutForm.dataset.saddleId = saddle.id;
   checkoutSaddleSummary.textContent = `${saddle.name} by ${saddle.manufacturer}`;
+  startedAtInput.value = String(Date.now());
+
+  const siteKey = config.turnstileSiteKey;
+  if (siteKey && window.turnstile && turnstileContainer && turnstileWidgetId === null) {
+    turnstileWidgetId = window.turnstile.render(turnstileContainer, {
+      sitekey: siteKey,
+      theme: "auto",
+    });
+  }
+
+  if (window.turnstile && turnstileWidgetId !== null) {
+    window.turnstile.reset(turnstileWidgetId);
+  }
 
   if (typeof checkoutDialog.showModal === "function") {
     checkoutDialog.showModal();
@@ -374,10 +391,18 @@ checkoutForm.addEventListener("submit", async (event) => {
     borrowerEmail: String(formData.get("borrowerEmail") || "").trim(),
     borrowerPhone: String(formData.get("borrowerPhone") || "").trim(),
     borrowerNotes: String(formData.get("borrowerNotes") || "").trim(),
+    website: String(formData.get("website") || "").trim(),
+    startedAtMs: Number(formData.get("startedAtMs") || 0),
+    turnstileToken: String(formData.get("cf-turnstile-response") || ""),
   };
 
   if (!payload.borrowerName || !payload.borrowerEmail) {
     setStatus("Name and email are required", true);
+    return;
+  }
+
+  if (config.turnstileSiteKey && !payload.turnstileToken) {
+    setStatus("Please complete the anti-spam check", true);
     return;
   }
 
