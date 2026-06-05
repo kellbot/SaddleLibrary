@@ -13,6 +13,27 @@ body {
   color: canvastext;
 }
 
+.top-nav {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.top-nav a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.top-nav a:hover,
+.top-nav a:focus-visible {
+  text-decoration: underline;
+  opacity: 1;
+}
+
 .site-header {
   padding: 2rem 1rem 1rem;
   text-align: center;
@@ -31,6 +52,24 @@ body {
   max-width: 1100px;
   margin: 0 auto;
   padding: 1rem;
+}
+
+.info-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.info-page h2 {
+  margin-top: 0;
+}
+
+.info-page section {
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: color-mix(in srgb, canvas 96%, currentColor 4%);
 }
 
 .toolbar {
