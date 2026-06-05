@@ -113,6 +113,7 @@ body {
   border-radius: 0.75rem;
   overflow: hidden;
   background: color-mix(in srgb, canvas 95%, currentColor 5%);
+  position: relative;
 }
 
 .card-photo {
@@ -120,6 +121,21 @@ body {
   aspect-ratio: 4 / 3;
   object-fit: cover;
   background: color-mix(in srgb, canvas 85%, currentColor 15%);
+  display: block;
+}
+
+.purchase-badge {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  color: gold;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.25rem 0.3rem;
+  border-radius: 0.35rem;
+  cursor: default;
+  user-select: none;
+  pointer-events: auto;
 }
 
 .card-body {

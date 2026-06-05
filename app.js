@@ -173,6 +173,8 @@ function parseRecord(record) {
   const purchaseLink = getFieldValueByAlias(fields, ["PurchaseLink", "Purchase Link"]);
   const width = getFieldValueByAlias(fields, ["Width"]);
   const notes = getFieldValueByAlias(fields, ["Notes", "Description"]);
+  const purchasePriceRaw = getFieldValueByAlias(fields, ["Purchase Price", "PurchasePrice"]);
+  const purchasePrice = purchasePriceRaw !== undefined && purchasePriceRaw !== null && purchasePriceRaw !== "" ? purchasePriceRaw : null;
 
   return {
     id: record.id,
@@ -182,6 +184,7 @@ function parseRecord(record) {
     purchaseLink: purchaseLink || "",
     width: formatWidth(width),
     notes: notes || "",
+    purchasePrice,
   };
 }
 
@@ -312,6 +315,16 @@ function renderCards(records) {
 
     image.src = saddle.photoUrl;
     image.alt = `${saddle.name} photo`;
+
+    if (saddle.purchasePrice !== null) {
+      const badge = document.createElement("span");
+      badge.className = "purchase-badge";
+      badge.setAttribute("aria-label", "Available for purchase");
+      badge.setAttribute("title", "Available for purchase");
+      badge.textContent = "★";
+      image.parentElement.appendChild(badge);
+    }
+
     title.textContent = saddle.name;
 
     const parts = [saddle.manufacturer];
