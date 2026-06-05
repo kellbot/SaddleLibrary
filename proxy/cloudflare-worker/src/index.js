@@ -176,11 +176,21 @@ async function enforceAntiSpam(env, request, payload) {
     throw new Error("Request rejected");
   }
 
-  const minFillMs = Number(env.MIN_FORM_FILL_MS || "2500");
+  const minFillMs = Number(env.MIN_FORM_FILL_MS || "1200");
+  const maxClockSkewMs = Number(env.MAX_CLIENT_CLOCK_SKEW_MS || "300000");
   const startedAt = Number(payload.startedAtMs || 0);
 
-  if (!startedAt || Date.now() - startedAt < minFillMs) {
-    throw new Error("Form submitted too quickly");
+  // Only enforce fill-time when timestamp is present and sane.
+  if (startedAt > 0) {
+    const elapsedMs = Date.now() - startedAt;
+
+    if (elapsedMs < -maxClockSkewMs) {
+      throw new Error("Clock mismatch detected. Please refresh and try again");
+    }
+
+    if (elapsedMs >= 0 && elapsedMs < minFillMs) {
+      throw new Error("Form submitted too quickly");
+    }
   }
 
   enforceRateLimit(request, env);
