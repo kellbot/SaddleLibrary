@@ -209,3 +209,82 @@ body {
   color: inherit;
   cursor: pointer;
 }
+
+.site-footer {
+  margin-top: 2rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  padding: 1rem;
+}
+
+.footer-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.footer-content p {
+  margin: 0;
+  opacity: 0.85;
+}
+
+.contact-button {
+  padding: 0.55rem 0.85rem;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.contact-dialog {
+  width: min(92vw, 500px);
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 0.75rem;
+  padding: 0;
+}
+
+.contact-form {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.contact-summary,
+.contact-form-status {
+  margin: 0;
+  opacity: 0.85;
+}
+
+.contact-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 0.45rem;
+  background: transparent;
+  color: inherit;
+}
+
+.contact-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.contact-actions button {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}

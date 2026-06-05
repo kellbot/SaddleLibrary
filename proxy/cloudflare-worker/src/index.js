@@ -37,7 +37,7 @@ function enforceRateLimit(request, env) {
   const windowMs = Number(env.RATE_LIMIT_WINDOW_MS || String(10 * 60 * 1000));
   const now = Date.now();
   const ip = getClientIp(request);
-  const key = `checkout:${ip}`;
+  const key = `submission:${ip}`;
   const current = rateLimitStore.get(key);
 
   if (!current || now > current.resetAt) {
@@ -197,6 +197,17 @@ async function enforceAntiSpam(env, request, payload) {
   await verifyTurnstile(env, payload.turnstileToken, request);
 }
 
+function parseContactPayload(payload) {
+  return {
+    name: String(payload?.name || "").trim(),
+    email: String(payload?.email || "").trim(),
+    message: String(payload?.message || "").trim(),
+    website: String(payload?.website || "").trim(),
+    startedAtMs: Number(payload?.startedAtMs || 0),
+    turnstileToken: String(payload?.turnstileToken || "").trim(),
+  };
+}
+
 function defaultDueDateIso(daysInFuture = 21) {
   const due = new Date();
   due.setUTCDate(due.getUTCDate() + daysInFuture);
@@ -348,6 +359,48 @@ async function createCheckoutRequest(env, request) {
   };
 }
 
+async function createContactRequest(env, request) {
+  const rawPayload = await request.json().catch(() => ({}));
+  const payload = parseContactPayload(rawPayload);
+
+  await enforceAntiSpam(env, request, payload);
+
+  if (!payload.name || !payload.email || !payload.message) {
+    throw new Error("name, email, and message are required");
+  }
+
+  const resendApiKey = env.RESEND_API_KEY;
+  const from = env.EMAIL_FROM;
+  const adminEmail = env.ADMIN_EMAIL;
+
+  if (!resendApiKey || !from || !adminEmail) {
+    throw new Error("Contact email is not configured");
+  }
+
+  const subject = "New Saddle Library contact form message";
+  const text = [
+    "New contact form submission:",
+    "",
+    `Name: ${payload.name}`,
+    `Email: ${payload.email}`,
+    "",
+    "Message:",
+    payload.message,
+  ].join("\n");
+  const html = `<p><strong>New contact form submission</strong></p><p><strong>Name:</strong> ${payload.name}<br/><strong>Email:</strong> ${payload.email}</p><p><strong>Message:</strong><br/>${payload.message.replace(/\n/g, "<br/>")}</p>`;
+
+  await sendResendEmail({
+    apiKey: resendApiKey,
+    from,
+    to: adminEmail,
+    subject,
+    text,
+    html,
+  });
+
+  return { ok: true };
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -371,6 +424,15 @@ export default {
         return jsonResponse(result, 201);
       } catch (error) {
         return jsonResponse({ error: error.message || "Checkout request failed" }, 400);
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/contact") {
+      try {
+        const result = await createContactRequest(env, request);
+        return jsonResponse(result, 201);
+      } catch (error) {
+        return jsonResponse({ error: error.message || "Contact request failed" }, 400);
       }
     }
 
