@@ -9,6 +9,7 @@ const statusElement = document.querySelector("#status");
 const listElement = document.querySelector("#saddleList");
 const searchInput = document.querySelector("#searchInput");
 const refreshButton = document.querySelector("#refreshButton");
+const filterControlsElement = document.querySelector("#filterControls");
 const cardTemplate = document.querySelector("#cardTemplate");
 const checkoutDialog = document.querySelector("#checkoutDialog");
 const checkoutForm = document.querySelector("#checkoutForm");
@@ -18,6 +19,21 @@ const startedAtInput = document.querySelector("#startedAtMs");
 const turnstileContainer = document.querySelector("#turnstileContainer");
 
 let turnstileWidgetId = null;
+
+const saddleFilters = [
+  {
+    id: "cutout",
+    label: "Cutout",
+    test: (saddle) => saddle.hasCutout === true,
+  },
+  {
+    id: "forPurchase",
+    label: "Available for purchase",
+    test: (saddle) => saddle.purchasePrice !== null,
+  },
+];
+
+const activeFilterState = Object.fromEntries(saddleFilters.map((filter) => [filter.id, false]));
 
 const sampleData = [
   {
@@ -156,6 +172,32 @@ function formatWidth(widthValue) {
   return /\bmm\b/i.test(text) ? text : `${text} mm`;
 }
 
+function parseBooleanField(value) {
+  if (Array.isArray(value)) {
+    value = value.find((item) => item !== null && item !== undefined && `${item}`.trim() !== "");
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "yes", "y", "1"].includes(normalized)) {
+      return true;
+    }
+    if (["false", "no", "n", "0", ""].includes(normalized)) {
+      return false;
+    }
+  }
+
+  return false;
+}
+
 function parseRecord(record) {
   const fields = record.fields || {};
   const name = getFieldValueByAlias(fields, ["Model", "Name"]);
@@ -175,6 +217,7 @@ function parseRecord(record) {
   const notes = getFieldValueByAlias(fields, ["Notes", "Description"]);
   const purchasePriceRaw = getFieldValueByAlias(fields, ["Purchase Price", "PurchasePrice"]);
   const purchasePrice = purchasePriceRaw !== undefined && purchasePriceRaw !== null && purchasePriceRaw !== "" ? purchasePriceRaw : null;
+  const cutoutRaw = getFieldValueByAlias(fields, ["Cutout"]);
 
   return {
     id: record.id,
@@ -185,7 +228,35 @@ function parseRecord(record) {
     width: formatWidth(width),
     notes: notes || "",
     purchasePrice,
+    hasCutout: parseBooleanField(cutoutRaw),
   };
+}
+
+function renderFilterControls() {
+  if (!filterControlsElement) {
+    return;
+  }
+
+  filterControlsElement.innerHTML = "";
+
+  for (const filter of saddleFilters) {
+    const label = document.createElement("label");
+    label.className = "filter-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = Boolean(activeFilterState[filter.id]);
+    checkbox.dataset.filterId = filter.id;
+
+    checkbox.addEventListener("change", () => {
+      activeFilterState[filter.id] = checkbox.checked;
+      applySearchAndFilters();
+    });
+
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(filter.label));
+    filterControlsElement.appendChild(label);
+  }
 }
 
 function getSaddleById(id) {
@@ -345,22 +416,30 @@ function renderCards(records) {
   listElement.appendChild(fragment);
 }
 
-function applySearch() {
+function applySearchAndFilters() {
   const q = searchInput.value.trim().toLowerCase();
-  if (!q) {
-    state.filtered = state.saddles;
-    renderCards(state.filtered);
-    return;
+
+  let results = state.saddles;
+
+  for (const filter of saddleFilters) {
+    if (!activeFilterState[filter.id]) {
+      continue;
+    }
+
+    results = results.filter((saddle) => filter.test(saddle));
   }
 
-  state.filtered = state.saddles.filter((saddle) => {
-    return (
-      saddle.name.toLowerCase().includes(q) ||
-      saddle.manufacturer.toLowerCase().includes(q) ||
-      saddle.notes.toLowerCase().includes(q)
-    );
-  });
+  if (q) {
+    results = results.filter((saddle) => {
+      return (
+        saddle.name.toLowerCase().includes(q) ||
+        saddle.manufacturer.toLowerCase().includes(q) ||
+        saddle.notes.toLowerCase().includes(q)
+      );
+    });
+  }
 
+  state.filtered = results;
   renderCards(state.filtered);
 }
 
@@ -369,8 +448,7 @@ async function load() {
     setStatus("Loading saddles...");
     const rawRecords = await fetchSaddlesFromAirtable();
     state.saddles = rawRecords.map(parseRecord);
-    state.filtered = state.saddles;
-    renderCards(state.filtered);
+    applySearchAndFilters();
     setStatus(`Loaded ${state.saddles.length} saddles`);
   } catch (error) {
     renderCards([]);
@@ -378,7 +456,9 @@ async function load() {
   }
 }
 
-searchInput.addEventListener("input", applySearch);
+renderFilterControls();
+
+searchInput.addEventListener("input", applySearchAndFilters);
 refreshButton.addEventListener("click", load);
 
 cancelCheckoutButton.addEventListener("click", () => {

@@ -17,8 +17,10 @@
     <header class="site-header">
       <h1>Philadelphia Saddle Library</h1>
       <p>Borrow a saddle!</p>
-      <p>Choose a saddle to borrow for up to 3 weeks. Pick up and drop off at your convenience from our Manayunk location.</p>
-      <p>Some saddles are also available for purchase for a small fee. These saddles are marked with a ★ badge. Fees collected go towards expanding our saddle library.</p>
+      <p>Choose a saddle to borrow for up to 3 weeks.</p>
+      <p>Pick up and drop off at your convenience from our Manayunk location.</p>
+      <p>Some saddles are also available for purchase for a small fee. These saddles are marked with a ★ badge.</p>
+      <p>Fees collected go towards expanding our saddle library.</p>
     </header>
 
     <main class="container">
@@ -26,6 +28,8 @@
         <input id="searchInput" type="search" placeholder="Search by name or manufacturer" />
         <button id="refreshButton" type="button">Refresh</button>
       </section>
+
+      <section id="filterControls" class="filters" aria-label="Saddle filters"></section>
 
       <section id="status" class="status" aria-live="polite"></section>
       <section id="saddleList" class="grid" aria-live="polite"></section>
@@ -38,7 +42,9 @@
           <h2 class="card-title"></h2>
           <p class="card-meta"></p>
           <p class="card-notes"></p>
-          <button class="checkout-button" type="button">Borrow</button>
+          <div class="card-actions">
+            <button class="checkout-button" type="button">Borrow</button>
+          </div>
         </div>
       </article>
     </template>
