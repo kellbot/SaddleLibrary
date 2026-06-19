@@ -172,6 +172,18 @@ function formatWidth(widthValue) {
   return /\bmm\b/i.test(text) ? text : `${text} mm`;
 }
 
+function formatSaddleCatalogId(idValue) {
+  if (Array.isArray(idValue)) {
+    idValue = idValue.find((item) => item !== null && item !== undefined && `${item}`.trim() !== "");
+  }
+
+  if (idValue === null || idValue === undefined) {
+    return "";
+  }
+
+  return String(idValue).trim();
+}
+
 function parseBooleanField(value) {
   if (Array.isArray(value)) {
     value = value.find((item) => item !== null && item !== undefined && `${item}`.trim() !== "");
@@ -214,6 +226,15 @@ function parseRecord(record) {
   ]) || findFirstAttachmentLikeField(fields);
   const purchaseLink = getFieldValueByAlias(fields, ["PurchaseLink", "Purchase Link"]);
   const width = getFieldValueByAlias(fields, ["Width"]);
+  const saddleCatalogIdRaw = getFieldValueByAlias(fields, [
+    "id",
+    "ID",
+    "Saddle ID",
+    "SaddleId",
+    "SaddleID",
+    "Catalog ID",
+    "CatalogId",
+  ]);
   const notes = getFieldValueByAlias(fields, ["Notes", "Description"]);
   const purchasePriceRaw = getFieldValueByAlias(fields, ["Purchase Price", "PurchasePrice"]);
   const purchasePrice = purchasePriceRaw !== undefined && purchasePriceRaw !== null && purchasePriceRaw !== "" ? purchasePriceRaw : null;
@@ -225,6 +246,7 @@ function parseRecord(record) {
     manufacturer: manufacturer || "Unknown",
     photoUrl: normalizePhoto(photo),
     purchaseLink: purchaseLink || "",
+    saddleCatalogId: formatSaddleCatalogId(saddleCatalogIdRaw),
     width: formatWidth(width),
     notes: notes || "",
     purchasePrice,
@@ -478,7 +500,9 @@ checkoutForm.addEventListener("submit", async (event) => {
   }
 
   const payload = {
-    saddleId,
+    saddleId: saddle.saddleCatalogId || "",
+    saddleRecordId: saddleId,
+    saddleBrand: saddle.manufacturer,
     saddleName: saddle.name,
     borrowerName: String(formData.get("borrowerName") || "").trim(),
     borrowerEmail: String(formData.get("borrowerEmail") || "").trim(),

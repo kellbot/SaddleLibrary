@@ -100,3 +100,28 @@ Security behavior of the proxy:
 - `GET /api/saddles` is locked to `AIRTABLE_TABLE_NAME` and `AIRTABLE_VIEW` from Worker env vars.
 - URL query params cannot switch the endpoint to private tables like `Borrowers`.
 - `POST /api/checkouts` accepts form submissions and writes server-side only.
+
+## Local email test (quick start)
+
+If you only want to test checkout/contact emails locally, use this workflow:
+
+1. Create `proxy/cloudflare-worker/.dev.vars` with your real values:
+   - `AIRTABLE_TOKEN=...`
+   - `AIRTABLE_BASE_ID=...`
+   - `RESEND_API_KEY=...`
+   - `EMAIL_FROM=...`
+   - `ADMIN_EMAIL=...`
+2. Start the Worker:
+   - `cd proxy/cloudflare-worker`
+   - `npm install`
+   - `npm run dev`
+3. In `config.js`, temporarily set:
+   - `proxyUrl: "http://127.0.0.1:8787/api/saddles"`
+   - `checkoutProxyUrl: "http://127.0.0.1:8787/api/checkouts"`
+   - `contactProxyUrl: "http://127.0.0.1:8787/api/contact"`
+   - `turnstileSiteKey: ""`
+4. In another terminal, run the site locally from the repo root:
+   - `npx --yes http-server . -p 4173 -c-1`
+5. Open `http://127.0.0.1:4173` and submit checkout/contact.
+
+When running on localhost with `wrangler dev`, anti-spam checks are bypassed so local email tests work without Turnstile setup. Production deployments still use anti-spam checks.

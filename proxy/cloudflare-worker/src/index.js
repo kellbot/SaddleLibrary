@@ -130,6 +130,8 @@ async function createAirtableRecord({ token, baseId, tableName, fields }) {
 function parseCheckoutPayload(payload) {
   return {
     saddleId: String(payload?.saddleId || "").trim(),
+    saddleRecordId: String(payload?.saddleRecordId || "").trim(),
+    saddleBrand: String(payload?.saddleBrand || payload?.manufacturer || "").trim(),
     saddleName: String(payload?.saddleName || "").trim(),
     borrowerName: String(payload?.borrowerName || "").trim(),
     borrowerEmail: String(payload?.borrowerEmail || "").trim(),
@@ -171,7 +173,17 @@ async function verifyTurnstile(env, token, request) {
   }
 }
 
+function isLocalWorkerRequest(request) {
+  const host = new URL(request.url).hostname;
+  return host === "127.0.0.1" || host === "localhost";
+}
+
 async function enforceAntiSpam(env, request, payload) {
+  // Local wrangler dev requests bypass anti-spam so checkout/contact email can be tested easily.
+  if (isLocalWorkerRequest(request)) {
+    return;
+  }
+
   if (payload.website) {
     throw new Error("Request rejected");
   }
@@ -214,20 +226,26 @@ function defaultDueDateIso(daysInFuture = 21) {
   return due.toISOString().slice(0, 10);
 }
 
-async function sendResendEmail({ apiKey, from, to, subject, text, html }) {
+async function sendResendEmail({ apiKey, from, to, subject, text, html, replyTo }) {
+  const emailPayload = {
+    from,
+    to,
+    subject,
+    text,
+    html,
+  };
+
+  if (replyTo) {
+    emailPayload.reply_to = replyTo;
+  }
+
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from,
-      to,
-      subject,
-      text,
-      html,
-    }),
+    body: JSON.stringify(emailPayload),
   });
 
   const payload = await response.json().catch(() => ({}));
@@ -264,6 +282,7 @@ async function sendCheckoutEmails(env, payload, checkoutRecordId, dueDateIso) {
   const borrowerHtml = `<p>Hi ${payload.borrowerName},</p><p>Thanks for requesting <strong>${payload.saddleName || "a saddle"}</strong>.</p><p>Your request status is currently: <strong>Pending review</strong>.<br/>Requested due date: <strong>${dueDateIso}</strong></p><p>We will contact you soon.</p>`;
 
   const adminSubject = "New saddle checkout request to review";
+  const saddleDisplayName = [payload.saddleBrand, payload.saddleName].filter(Boolean).join(" ") || payload.saddleId;
   const adminText = [
     "A new checkout request was submitted.",
     "",
@@ -271,12 +290,23 @@ async function sendCheckoutEmails(env, payload, checkoutRecordId, dueDateIso) {
     `Borrower: ${payload.borrowerName}`,
     `Email: ${payload.borrowerEmail}`,
     `Phone: ${payload.borrowerPhone || "(none)"}`,
-    `Saddle: ${payload.saddleName || payload.saddleId}`,
-    `Saddle Record ID: ${payload.saddleId}`,
+    `Saddle: ${saddleDisplayName || "(none)"}`,
+    `Saddle ID: ${payload.saddleId || "(none)"}`,
+    `Saddle Record ID: ${payload.saddleRecordId || "(none)"}`,
     `Due Date: ${dueDateIso}`,
     `Notes: ${payload.borrowerNotes || "(none)"}`,
   ].join("\n");
-  const adminHtml = `<p>A new checkout request was submitted.</p><ul><li><strong>Checkout Request ID:</strong> ${checkoutRecordId}</li><li><strong>Borrower:</strong> ${payload.borrowerName}</li><li><strong>Email:</strong> ${payload.borrowerEmail}</li><li><strong>Phone:</strong> ${payload.borrowerPhone || "(none)"}</li><li><strong>Saddle:</strong> ${payload.saddleName || payload.saddleId}</li><li><strong>Saddle Record ID:</strong> ${payload.saddleId}</li><li><strong>Due Date:</strong> ${dueDateIso}</li><li><strong>Notes:</strong> ${payload.borrowerNotes || "(none)"}</li></ul>`;
+  const adminHtml = 
+    `<p>A new checkout request was submitted.</p>
+    <ul>
+      <li><strong>Checkout Request ID:</strong> ${checkoutRecordId}</li>
+      <li><strong>Borrower:</strong> ${payload.borrowerName}</li>
+      <li><strong>Email:</strong> ${payload.borrowerEmail}</li>
+      <li><strong>Phone:</strong> ${payload.borrowerPhone || "(none)"}</li>
+      <li><strong>Saddle:</strong> ${saddleDisplayName || "(none)"}</li>
+      <li><strong>Saddle ID:</strong> ${payload.saddleId || "(none)"}</li>
+      <li><strong>Due Date:</strong> ${dueDateIso}</li>
+      <li><strong>Notes:</strong> ${payload.borrowerNotes || "(none)"}</li></ul>`;
 
   await Promise.all([
     sendResendEmail({
@@ -294,6 +324,7 @@ async function sendCheckoutEmails(env, payload, checkoutRecordId, dueDateIso) {
       subject: adminSubject,
       text: adminText,
       html: adminHtml,
+      replyTo: payload.borrowerEmail,
     }),
   ]);
 
@@ -314,11 +345,12 @@ async function createCheckoutRequest(env, request) {
 
   const rawPayload = await request.json().catch(() => ({}));
   const payload = parseCheckoutPayload(rawPayload);
+  const linkedSaddleRecordId = payload.saddleRecordId || payload.saddleId;
 
   await enforceAntiSpam(env, request, payload);
 
-  if (!payload.saddleId || !payload.borrowerName || !payload.borrowerEmail) {
-    throw new Error("saddleId, borrowerName, and borrowerEmail are required");
+  if (!linkedSaddleRecordId || !payload.borrowerName || !payload.borrowerEmail) {
+    throw new Error("saddleRecordId (or saddleId), borrowerName, and borrowerEmail are required");
   }
 
   const borrowerRef = generateBorrowerRef();
@@ -341,7 +373,7 @@ async function createCheckoutRequest(env, request) {
     baseId,
     tableName: checkoutsTable,
     fields: {
-      Saddle: [payload.saddleId],
+      Saddle: [linkedSaddleRecordId],
       Borrower: [borrowerRecord.id],
       BorrowerNotes: payload.borrowerNotes,
       Status: "Requested",
