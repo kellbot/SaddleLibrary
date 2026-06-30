@@ -491,17 +491,17 @@ checkoutForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const formData = new FormData(checkoutForm);
-  const saddleId = checkoutForm.dataset.saddleId;
-  const saddle = getSaddleById(saddleId);
+  const saddleRecordId = checkoutForm.dataset.saddleId;
+  const saddle = getSaddleById(saddleRecordId);
 
-  if (!saddleId || !saddle) {
+  if (!saddleRecordId || !saddle) {
     setStatus("No saddle selected for checkout", true);
     return;
   }
 
   const payload = {
     saddleId: saddle.saddleCatalogId || "",
-    saddleRecordId: saddleId,
+    saddleRecordId,
     saddleBrand: saddle.manufacturer,
     saddleName: saddle.name,
     borrowerName: String(formData.get("borrowerName") || "").trim(),

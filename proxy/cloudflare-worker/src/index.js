@@ -127,6 +127,83 @@ async function createAirtableRecord({ token, baseId, tableName, fields }) {
   return payload;
 }
 
+function isAirtableRecordId(value) {
+  return /^rec[0-9A-Za-z]+$/.test(String(value || "").trim());
+}
+
+function getFieldValueByAlias(fields, aliases) {
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(fields, alias)) {
+      return fields[alias];
+    }
+  }
+
+  const lowerMap = Object.fromEntries(
+    Object.keys(fields).map((key) => [key.trim().toLowerCase(), key]),
+  );
+
+  for (const alias of aliases) {
+    const matchedKey = lowerMap[alias.trim().toLowerCase()];
+    if (matchedKey) {
+      return fields[matchedKey];
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeScalar(value) {
+  if (Array.isArray(value)) {
+    value = value.find((item) => item !== null && item !== undefined && `${item}`.trim() !== "");
+  }
+
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).trim();
+}
+
+function getSaddleCatalogIdFromRecord(record) {
+  const fields = record?.fields || {};
+  const catalogIdRaw = getFieldValueByAlias(fields, [
+    "id",
+    "ID",
+    "Saddle ID",
+    "SaddleId",
+    "SaddleID",
+    "Catalog ID",
+    "CatalogId",
+  ]);
+
+  return normalizeScalar(catalogIdRaw);
+}
+
+async function resolveLinkedSaddleRecordId(env, payload) {
+  const candidateRecordId = normalizeScalar(payload.saddleRecordId);
+  if (isAirtableRecordId(candidateRecordId)) {
+    return candidateRecordId;
+  }
+
+  const secondaryRecordId = normalizeScalar(payload.saddleId);
+  if (isAirtableRecordId(secondaryRecordId)) {
+    return secondaryRecordId;
+  }
+
+  const candidateCatalogId = normalizeScalar(payload.saddleId || payload.saddleRecordId);
+  if (!candidateCatalogId) {
+    return "";
+  }
+
+  const saddleRecords = await fetchAllRecords(env);
+  const matched = saddleRecords.find((record) => {
+    const catalogId = getSaddleCatalogIdFromRecord(record);
+    return catalogId && catalogId === candidateCatalogId;
+  });
+
+  return matched?.id || "";
+}
+
 function parseCheckoutPayload(payload) {
   return {
     saddleId: String(payload?.saddleId || "").trim(),
@@ -345,12 +422,12 @@ async function createCheckoutRequest(env, request) {
 
   const rawPayload = await request.json().catch(() => ({}));
   const payload = parseCheckoutPayload(rawPayload);
-  const linkedSaddleRecordId = payload.saddleRecordId || payload.saddleId;
+  const linkedSaddleRecordId = await resolveLinkedSaddleRecordId(env, payload);
 
   await enforceAntiSpam(env, request, payload);
 
   if (!linkedSaddleRecordId || !payload.borrowerName || !payload.borrowerEmail) {
-    throw new Error("saddleRecordId (or saddleId), borrowerName, and borrowerEmail are required");
+    throw new Error("Valid saddle record ID could not be resolved. Please refresh and try again.");
   }
 
   const borrowerRef = generateBorrowerRef();
