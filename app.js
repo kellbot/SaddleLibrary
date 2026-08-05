@@ -210,6 +210,22 @@ function parseBooleanField(value) {
   return false;
 }
 
+function normalizeStatus(value) {
+  if (Array.isArray(value)) {
+    value = value.find((item) => item !== null && item !== undefined && `${item}`.trim() !== "");
+  }
+
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).trim();
+}
+
+function isPurchasedStatus(statusValue) {
+  return normalizeStatus(statusValue).toLowerCase() === "purchased";
+}
+
 function parseRecord(record) {
   const fields = record.fields || {};
   const name = getFieldValueByAlias(fields, ["Model", "Name"]);
@@ -239,6 +255,7 @@ function parseRecord(record) {
   const purchasePriceRaw = getFieldValueByAlias(fields, ["Purchase Price", "PurchasePrice"]);
   const purchasePrice = purchasePriceRaw !== undefined && purchasePriceRaw !== null && purchasePriceRaw !== "" ? purchasePriceRaw : null;
   const cutoutRaw = getFieldValueByAlias(fields, ["Cutout"]);
+  const statusRaw = getFieldValueByAlias(fields, ["Status"]);
 
   return {
     id: record.id,
@@ -251,6 +268,7 @@ function parseRecord(record) {
     notes: notes || "",
     purchasePrice,
     hasCutout: parseBooleanField(cutoutRaw),
+    status: normalizeStatus(statusRaw),
   };
 }
 
@@ -418,6 +436,12 @@ function renderCards(records) {
       image.parentElement.appendChild(badge);
     }
 
+    // Change the checkout button if it's on loan
+    if (saddle.status == "On Loan") {
+      checkoutButton.textContent = "On Loan";
+      checkoutButton.disabled = true;
+    }
+
     title.textContent = saddle.name;
 
     const parts = [saddle.manufacturer];
@@ -441,7 +465,7 @@ function renderCards(records) {
 function applySearchAndFilters() {
   const q = searchInput.value.trim().toLowerCase();
 
-  let results = state.saddles;
+  let results = state.saddles.filter((saddle) => !isPurchasedStatus(saddle.status));
 
   for (const filter of saddleFilters) {
     if (!activeFilterState[filter.id]) {
